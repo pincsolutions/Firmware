@@ -1,0 +1,57 @@
+#!/bin/sh
+#
+# @name DJI Matrice 100 SITL (Vision)
+#
+# @type Quadrotor Wide
+#
+
+sh /etc/init.d-posix/10016_iris
+
+if [ $AUTOCNF = yes ]; then
+  # EKF2: Vision position and heading
+  param set EKF2_AID_MASK 24
+  param set EKF2_EV_DELAY 150
+  param set EKF2_EV_GATE 10
+  param set EKF2_EV_POS_X 0.12
+  param set EKF2_EV_POS_Z -0.05
+
+  # EKF2: height mode set to range finder
+  param set EKF2_HGT_MODE 2
+
+  # INAV: trust more on the vision input
+  param set INAV_W_XY_VIS_P 9
+  param set INAV_W_Z_VIS_P 7
+  param set INAV_W_XY_GPS_P 0
+  param set INAV_W_XY_GPS_V 0
+  param set INAV_W_Z_GPS_P 0
+
+  # Control height relative to ground
+  param set MPC_ALT_MODE 2
+
+  # LPE: Vision + OF + baro
+  param set LPE_FUSION 134
+
+  # AEQ: External heading set to use vision input
+  param set ATT_EXT_HDG_M 1
+
+  # tune down controller
+  param set MIS_TAKEOFF_ALT 1.5
+  param set MC_YAWRATE_MAX 20
+  param set MC_YAWRATE_P 0.15
+  param set MC_YAW_P 2.2
+  param set MPC_ACC_HOR 5
+  param set MPC_CRUISE_90 2
+  param set MPC_HOLD_MAX_XY 0.5
+  param set MPC_HOLD_MAX_Z 0.5
+  param set MPC_MAN_TILT_MAX 10
+  param set MPC_TILTMAX_AIR 10
+  param set MPC_TILTMAX_LND 10
+  param set MPC_VEL_MANUAL 2
+  param set MPC_XY_CRUISE 0.5
+  param set MPC_XY_P 0.8
+  param set MPC_XY_VEL_MAX 0.5
+  param set MPC_XY_VEL_P 0.2
+  param set MPC_Z_VEL_MAX_UP 0.5
+  param set MPC_Z_VEL_MAX_DN 0.5
+  param set NAV_ACC_RAD 2
+fi
