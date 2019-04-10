@@ -42,8 +42,10 @@
 
 #include <drivers/drv_hrt.h>
 #include <lib/ecl/EKF/ekf.h>
+#include <lib/ecl/ecl.h>
 #include <lib/mathlib/mathlib.h>
 #include <lib/perf/perf_counter.h>
+#include <modules/commander/px4_custom_mode.h>
 #include <px4_defines.h>
 #include <px4_module.h>
 #include <px4_module_params.h>
@@ -66,6 +68,7 @@
 #include <uORB/topics/sensor_selection.h>
 #include <uORB/topics/vehicle_air_data.h>
 #include <uORB/topics/vehicle_attitude.h>
+#include <uORB/topics/vehicle_command.h>
 #include <uORB/topics/vehicle_global_position.h>
 #include <uORB/topics/vehicle_gps_position.h>
 #include <uORB/topics/vehicle_land_detected.h>
@@ -278,6 +281,7 @@ private:
 	orb_advert_t _ekf_gps_drift_pub{nullptr};
 	orb_advert_t _estimator_innovations_pub{nullptr};
 	orb_advert_t _ekf2_timestamps_pub{nullptr};
+	orb_advert_t _inflight_ev_error_pub{nullptr};
 	orb_advert_t _sensor_bias_pub{nullptr};
 	orb_advert_t _blended_gps_pub{nullptr};
 
@@ -1195,6 +1199,35 @@ void Ekf2::run()
 		}
 
 		// get external vision data
+		// check for corrupt ev data received during flight
+		// TODO: Add parameter to PX4 that would cause a land command to be issued
+		// if ev position causes a reset in height/altitude. add to this
+		// if statement condition as && to allow for a short-circuit
+		// ex, if (px4_ev_land_param && _ekf.get_inflight_ev_status())
+		if (_ekf.get_inflight_ev_status())
+		{
+			vehicle_command_s command{};
+			command.timestamp = now;
+			command.command = vehicle_command_s::VEHICLE_CMD_DO_SET_MODE;
+			command.param1 = (float)1; // base mode
+			command.param3 = (float)0; // sub mode
+			command.target_system = 1;
+			command.target_component = 1;
+			command.source_system = 1;
+			command.source_component = 1;
+			command.confirmation = false;
+			command.from_external = false;
+			command.param2 = (float)PX4_CUSTOM_MAIN_MODE_AUTO;
+			command.param3 = (float)PX4_CUSTOM_SUB_MODE_AUTO_LAND;
+
+			// publish land command
+			if (_inflight_ev_error_pub == nullptr)
+				_inflight_ev_error_pub = orb_advertise(ORB_ID(vehicle_command), &command);
+			else
+				orb_publish(ORB_ID(vehicle_command), _inflight_ev_error_pub, &command);
+			
+			ECL_WARN("Commanding to land due to poor EV data");
+		}
 		// if error estimates are unavailable, use parameter defined defaults
 		bool visual_odometry_updated = false;
 		orb_check(_ev_odom_sub, &visual_odometry_updated);
