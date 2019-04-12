@@ -65,8 +65,6 @@ posix-configs/SITL/init/test/*_generated
 .coverage
 .coverage.*
 
-.vscode/.cortex-debug.peripherals.state.json
-.vscode/.cortex-debug.registers.state.json
-.vscode/compile_commands.json
-.vscode/ipch/
+# vscode stuff
+.vscode
 
