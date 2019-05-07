@@ -128,6 +128,7 @@ private:
 	bool update_mag_decl(Param &mag_decl_param);
 	bool publish_attitude(const sensor_combined_s &sensors, const hrt_abstime &now);
 	bool publish_wind_estimate(const hrt_abstime &timestamp);
+	bool _poor_ev_initiated_landing = false;   // specifies the condition where an auto.land message has been sent to FCU in the event of poor ev data
 
 	const Vector3f get_vel_body_wind();
 
@@ -1204,7 +1205,7 @@ void Ekf2::run()
 		// if ev position causes a reset in height/altitude. add to this
 		// if statement condition as && to allow for a short-circuit
 		// ex, if (px4_ev_land_param && _ekf.get_inflight_ev_status())
-		if (_ekf.get_inflight_ev_status())
+		if (!_poor_ev_initiated_landing && _ekf.get_inflight_ev_status())
 		{
 			vehicle_command_s command{};
 			command.timestamp = now;
@@ -1226,8 +1227,10 @@ void Ekf2::run()
 			else
 				orb_publish(ORB_ID(vehicle_command), _inflight_ev_error_pub, &command);
 			
+			_poor_ev_initiated_landing = true;
 			ECL_WARN("Commanding to land due to poor EV data");
 		}
+
 		// if error estimates are unavailable, use parameter defined defaults
 		bool visual_odometry_updated = false;
 		orb_check(_ev_odom_sub, &visual_odometry_updated);
